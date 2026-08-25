@@ -33,3 +33,9 @@ Thumbs.db
 
 # Logs
 *.log
+.venv/
+app/.venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
