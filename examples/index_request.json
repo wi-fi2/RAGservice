@@ -1,0 +1,14 @@
+{
+  "chunk_size": 800,
+  "chunk_overlap": 200,
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2"
+}
+
+
+
+
+
+
+
+
+

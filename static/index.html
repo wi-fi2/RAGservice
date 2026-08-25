@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Service - Web Crawler & Q&A</title>
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --primary-hover: #5a67d8;
+            --border-color: rgba(255, 255, 255, 0.12);
+            --bg-color: rgba(255, 255, 255, 0.08);
+            --card-bg: rgba(255, 255, 255, 0.12);
+            --text-color: #e0e0e0;
+            --bg-dark: #191919;
+            --sidebar-bg: #121212;
+            --card-bg: #202020;
+            --input-bg: #262626;
+            --border-color: #333;
+            --text-primary: #e8e8e8;
+            --text-secondary: #a0a0a0;
+            --accent: #10a37f;
+            /* Or a subtle teal */
+            --accent-hover: #15b38b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            flex-shrink: 0;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-item {
+            padding: 10px 12px;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background-color: var(--card-bg);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            font-weight: 500;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            height: 100vh;
+        }
+
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px 20px 120px 20px;
+            /* Bottom padding for fixed input */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .content-wrapper {
+            width: 100%;
+            max-width: 768px;
+        }
+
+        /* Setup Card (Crawl & Index) */
+        .setup-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .setup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .setup-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .action-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        button.action-btn {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button.action-btn:hover:not(:disabled) {
+            background-color: #2a2a2a;
+            border-color: #555;
+        }
+
+        button.action-btn.primary {
+            background-color: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        button.action-btn.primary:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Answer Area */
+        .answer-section {
+            margin-top: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .answer-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .answer-content {
+            line-height: 1.6;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .sources-list {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px 0;
+            margin-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .source-card {
+            min-width: 200px;
+            max-width: 240px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .source-title {
+            color: var(--accent);
+            font-weight: 500;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .source-snippet {
+            color: var(--text-secondary);
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            font-size: 0.8rem;
+        }
+
+        /* Fixed Input Area */
+        .input-area-wrapper {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, var(--bg-dark) 80%, transparent);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .input-bar {
+            width: 100%;
+            max-width: 768px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            /* Rounded pill shape */
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        textarea#question {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1rem;
+            resize: none;
+            height: 24px;
+            /* Starts single line */
+            max-height: 120px;
+            font-family: inherit;
+            padding: 0;
+        }
+
+        textarea#question:focus {
+            outline: none;
+            box-shadow: none;
+        }
+
+        button#askBtn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button#askBtn:hover:not(:disabled) {
+            transform: scale(1.05);
+        }
+
+        /* Status & Info */
+        .status-line {
+            font-size: 0.85rem;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-line.success {
+            color: #4ade80;
+        }
+
+        .status-line.error {
+            color: #f87171;
+        }
+
+        .status-line.info {
+            color: #60a5fa;
+        }
+
+        .system-status-mini {
+            position: absolute;
+            bottom: 10px;
+            left: 20px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Loader */
+        .loader {
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">
+            <span style="font-size:1.8rem;">❄️</span> RAG Service
+        </div>
+        <div class="nav-item active">
+            <span>🏠</span> Home
+        </div>
+        <div class="nav-item">
+            <span>🔍</span> Discover
+        </div>
+        <div class="nav-item">
+            <span>📚</span> Library
+        </div>
+        <div style="margin-top: auto;">
+            <div class="nav-item">
+                <span>⚙️</span> Settings
+            </div>
+            <div id="systemInfo" style="font-size: 0.75rem; color: #555; padding: 10px;">
+                Loading stats...
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="scroll-area">
+            <div class="content-wrapper">
+
+                <!-- Configuration / Context Card -->
+                <div class="setup-card">
+                    <div class="setup-header">
+                        <span class="setup-title">Source Configuration</span>
+                        <div id="crawlStatus" class="status-line"></div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <input type="text" id="url" placeholder="https://example.com"
+                            value="https://docs.python.org/3/">
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Max Pages</label>
+                            <input type="number" id="maxPages" value="30" min="1" max="500">
+                        </div>
+                        <div class="form-group">
+                            <label>Max Depth</label>
+                            <input type="number" id="maxDepth" value="3" min="1" max="10">
+                        </div>
+                    </div>
+
+                    <div class="action-row">
+                        <button id="crawlBtn" class="action-btn" onclick="crawl()">
+                            🚀 Start Crawling
+                        </button>
+                        <button id="indexBtn" class="action-btn primary" onclick="index()" disabled>
+                            📚 Index Pages
+                        </button>
+                        <div id="indexStatus" class="status-line" style="margin-top:0;"></div>
+                    </div>
+                </div>
+
+                <!-- Answer Output -->
+                <div id="answerBox" class="answer-section hidden">
+                    <!-- Content injected by JS -->
+                </div>
+                <div id="askStatus" class="status-line" style="justify-content: center; margin-top: 20px;"></div>
+
+            </div>
+        </div>
+
+        <!-- Fixed Input Bar -->
+        <div class="input-area-wrapper">
+            <div class="input-bar">
+                <span style="font-size: 1.2rem; color: var(--text-secondary);">⊕</span>
+                <textarea id="question" rows="1" placeholder="Ask a follow-up...">What is Python?</textarea>
+                <button id="askBtn" onclick="ask()" disabled>
+                    ➤
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        // Auto-resize textarea
+        const tx = document.getElementById('question');
+        tx.addEventListener("input", function () {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        async function crawl() {
+            const url = document.getElementById('url').value;
+            const maxPages = parseInt(document.getElementById('maxPages').value);
+            const maxDepth = parseInt(document.getElementById('maxDepth').value);
+
+            const crawlBtn = document.getElementById('crawlBtn');
+            const statusDiv = document.getElementById('crawlStatus');
+
+            crawlBtn.disabled = true;
+            statusDiv.innerHTML = '<div class="loader"></div> Crawling...';
+            statusDiv.className = 'status-line info';
+
+            try {
+                const response = await fetch(`${API_BASE}/crawl`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        start_url: url,
+                        max_pages: maxPages,
+                        max_depth: maxDepth,
+                        crawl_delay_ms: 500
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusDiv.innerHTML = `✅ Crawled ${data.page_count} pages`;
+                    statusDiv.className = 'status-line success';
+                    document.getElementById('indexBtn').disabled = false;
+                    updateSystemInfo();
+                } else {
+                    throw new Error(data.detail || 'Crawl failed');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `❌ ${error.message}`;
+                statusDiv.className = 'status-line error';
+            } finally {
+                crawlBtn.disabled = false;
+            }
+        }
+
+        async function index() {
+            const indexBtn = document.getElementById('indexBtn');
+            const statusDiv = document.getElementById('indexStatus');
+
+            indexBtn.disabled = true;
+            statusDiv.innerHTML = '<div class="loader"></div> Indexing...';
+            statusDiv.className = 'status-line info';
+
+            try {
+                const response = await fetch(`${API_BASE}/index`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chunk_size: 800,
+                        chunk_overlap: 200,
+                        embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusDiv.innerHTML = `✅ Indexed ${data.vector_count} chunks`;
+                    statusDiv.className = 'status-line success';
+                    document.getElementById('askBtn').disabled = false;
+                    updateSystemInfo();
+                } else {
+                    throw new Error(data.detail || 'Indexing failed');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `❌ ${error.message}`;
+                statusDiv.className = 'status-line error';
+            } finally {
+                indexBtn.disabled = false;
+            }
+        }
+
+        async function ask() {
+            const question = document.getElementById('question').value;
+            const askBtn = document.getElementById('askBtn');
+            const statusDiv = document.getElementById('askStatus');
+            const answerBox = document.getElementById('answerBox');
+
+            askBtn.disabled = true;
+            statusDiv.innerHTML = '<div class="loader"></div> Thinking...';
+            statusDiv.className = 'status-line info';
+
+            // Don't hide answer box immediately if we want to show history, but here we replace
+            answerBox.classList.add('hidden');
+
+            try {
+                const response = await fetch(`${API_BASE}/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question: question,
+                        top_k: 5
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusDiv.innerHTML = `Generated in ${data.timings.total_ms.toFixed(0)}ms`;
+                    statusDiv.className = 'status-line success';
+
+                    let html = `
+                        <div class="answer-header">
+                            <span>🤖</span> Answer
+                        </div>
+                        <div class="answer-content">
+                            ${data.answer.replace(/\n/g, '<br>')}
+                        </div>
+                    `;
+
+                    if (data.sources && data.sources.length > 0) {
+                        html += '<div class="sources-list">';
+                        data.sources.forEach((source, i) => {
+                            html += `
+                                <div class="source-card">
+                                    <div class="source-title">${i + 1}. ${source.url}</div>
+                                    <div class="source-snippet">${source.snippet}</div>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                    }
+
+                    answerBox.innerHTML = html;
+                    answerBox.classList.remove('hidden');
+                } else {
+                    throw new Error(data.detail || 'Ask failed');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `❌ ${error.message}`;
+                statusDiv.className = 'status-line error';
+            } finally {
+                askBtn.disabled = false;
+            }
+        }
+
+        async function updateSystemInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/stats`);
+                const data = await response.json();
+
+                document.getElementById('systemInfo').innerHTML = `
+                    Pages: ${data.crawled_pages} | Vectors: ${data.index_stats.total_vectors}<br>
+                    Model: ${data.llm_model}
+                `;
+            } catch (error) {
+                console.error('Failed to fetch stats:', error);
+            }
+        }
+
+        // Load system info on page load
+        updateSystemInfo();
+    </script>
+</body>
+
+</html>

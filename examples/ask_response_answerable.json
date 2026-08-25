@@ -1,0 +1,28 @@
+{
+  "answer": "Python decorators are a powerful feature that allows you to modify or enhance functions and classes without permanently modifying their code. Decorators work by wrapping another function and extending its behavior. They are defined using the @ symbol followed by the decorator name, placed above the function definition. When a decorated function is called, it's actually the decorator that gets called first, which then calls the original function with potentially modified arguments or additional functionality.",
+  "sources": [
+    {
+      "url": "https://docs.python.org/3/tutorial/classes.html#decorators",
+      "snippet": "Decorators are a significant part of Python. In simple terms, they are functions that take another function and extend the behavior of the latter function without explicitly modifying it..."
+    },
+    {
+      "url": "https://docs.python.org/3/tutorial/controlflow.html#defining-functions",
+      "snippet": "A decorator is a design pattern in Python that allows a user to add new functionality to an existing object without modifying its structure..."
+    }
+  ],
+  "timings": {
+    "retrieval_ms": 45.3,
+    "generation_ms": 1250.7,
+    "total_ms": 1296.0
+  }
+}
+
+
+
+
+
+
+
+
+
+

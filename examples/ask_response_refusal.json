@@ -1,0 +1,19 @@
+{
+  "answer": "NOT_ENOUGH_INFORMATION: The crawled documentation pages do not contain any information about stock prices or financial market data for the Python Software Foundation. The available sources focus on Python programming language tutorials and technical documentation, not financial information.",
+  "sources": [],
+  "timings": {
+    "retrieval_ms": 32.1,
+    "generation_ms": 890.5,
+    "total_ms": 922.6
+  }
+}
+
+
+
+
+
+
+
+
+
+
