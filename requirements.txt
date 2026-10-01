@@ -14,7 +14,7 @@ robotsparser==0.0.5
 # Vector Search & Embeddings
 sentence-transformers==2.2.2
 faiss-cpu==1.9.0.post1
-numpy==1.24.3
+numpy==1.26.4
 torch==2.1.0
 transformers==4.35.2
 
