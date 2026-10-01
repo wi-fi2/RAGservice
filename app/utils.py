@@ -49,7 +49,9 @@ Question: {question}
 Provide a clear, grounded answer with citations. If you cannot answer from the sources, say "NOT_ENOUGH_INFORMATION" and explain what information is missing. [/INST]"""
 
 HARDENING_RULES = [
-    # Remove potential prompt injections
+    # Remove potential prompt injections (drop script/style blocks including their contents)
+    (r'<script\b[^>]*>.*?</script\s*>', ''),
+    (r'<style\b[^>]*>.*?</style\s*>', ''),
     (r'</?script[^>]*>', ''),
     (r'</?style[^>]*>', ''),
     (r'javascript:', ''),
@@ -77,7 +79,7 @@ def clean_text_for_indexing(text: str) -> str:
 def sanitize_content(text: str) -> str:
     """Apply security hardening to prevent prompt injection."""
     for pattern, replacement in HARDENING_RULES:
-        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE | re.DOTALL)
     return text
 
 
@@ -309,7 +311,7 @@ def parse_llm_response(response: str) -> Tuple[str, List[Dict[str, str]]]:
         sources.append({"url": url.strip(), "snippet": ""})
     
     # Remove citations from answer for cleaner text
-    answer = re.sub(citation_pattern, '', answer).strip()
+    answer = re.sub(r'\s+', ' ', re.sub(citation_pattern, '', answer)).strip()
     
     # Try to extract snippets from the response
     snippet_pattern = r'SNIPPET_\d+:\s*([^\n]+)'

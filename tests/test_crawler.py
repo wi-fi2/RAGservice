@@ -2,7 +2,7 @@
 
 import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, MagicMock, patch, AsyncMock
 import aiohttp
 from app.crawler import PoliteCrawler, crawl_website
 
@@ -31,16 +31,17 @@ Disallow: /private/
 Allow: /public/
         """
         
-        # Mock session
+        # Mock session: session.get(...) must be an async context manager, not a coroutine
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.text = AsyncMock(return_value=robots_content)
-        
-        mock_session = AsyncMock()
-        mock_session.get = AsyncMock(return_value=mock_response)
-        mock_session.__aenter__ = AsyncMock(return_value=mock_response)
-        mock_session.__aexit__ = AsyncMock(return_value=None)
-        
+
+        get_cm = MagicMock()
+        get_cm.__aenter__ = AsyncMock(return_value=mock_response)
+        get_cm.__aexit__ = AsyncMock(return_value=None)
+        mock_session = MagicMock()
+        mock_session.get = MagicMock(return_value=get_cm)
+
         await crawler.initialize_robots(mock_session)
         
         # Test allowed/disallowed URLs
@@ -101,39 +102,31 @@ Allow: /public/
     
     @pytest.mark.asyncio
     async def test_max_pages_limit(self):
-        """Test that crawler respects max_pages limit."""
-        with patch('aiohttp.ClientSession') as mock_session_class:
-            mock_session = AsyncMock()
-            mock_session_class.return_value.__aenter__.return_value = mock_session
-            
-            # Mock responses
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_response.headers = {'Content-Type': 'text/html'}
-            mock_response.text = AsyncMock(return_value="""
-                <html><body>
-                    <a href="/page2">Page 2</a>
-                    <a href="/page3">Page 3</a>
-                    <a href="/page4">Page 4</a>
-                </body></html>
-            """)
-            
-            mock_session.get = AsyncMock(return_value=mock_response)
-            mock_response.__aenter__ = AsyncMock(return_value=mock_response)
-            mock_response.__aexit__ = AsyncMock(return_value=None)
-            
-            # Create crawler with max_pages=2
-            crawler = PoliteCrawler(
-                start_url="https://example.com",
-                max_pages=2,
-                max_depth=3,
-                crawl_delay_ms=10
-            )
-            
+        """Test that crawler stops at max_pages even when more pages are linked."""
+        html = """
+            <html><body>
+                <p>Some page content that is long enough to be extracted.</p>
+                <a href="/page2">Page 2</a>
+                <a href="/page3">Page 3</a>
+                <a href="/page4">Page 4</a>
+            </body></html>
+        """
+
+        async def fake_fetch(self, session, url, depth):
+            return html, "text/html", 200
+
+        crawler = PoliteCrawler(
+            start_url="https://example.com",
+            max_pages=2,
+            max_depth=3,
+            crawl_delay_ms=10
+        )
+
+        with patch.object(PoliteCrawler, 'initialize_robots', new=AsyncMock()), \
+             patch.object(PoliteCrawler, 'fetch_page', new=fake_fetch):
             result = await crawler.crawl()
-            
-            # Should only crawl 2 pages maximum
-            assert result['page_count'] <= 2
+
+        assert result['page_count'] == 2
 
 
 @pytest.mark.asyncio

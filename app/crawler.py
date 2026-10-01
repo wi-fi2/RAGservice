@@ -131,6 +131,9 @@ class PoliteCrawler:
             summary = doc.summary()
             clean_soup = BeautifulSoup(summary, 'lxml')
             text = clean_soup.get_text(separator=' ', strip=True)
+            if not text:
+                # readability returns nothing for short or non-article pages
+                text = soup.get_text(separator=' ', strip=True)
         except Exception:
             # Fallback to simple extraction
             text = soup.get_text(separator=' ', strip=True)
@@ -173,6 +176,11 @@ class PoliteCrawler:
                 return
             
             html_content, content_type, status_code = result
+
+            # Concurrent crawls all pass the limit check above before any fetch finishes,
+            # so re-check here (no await between this check and the store below).
+            if len(self.crawled_pages) >= self.max_pages:
+                return
             
             # Extract text and links
             text, links = self.extract_text_and_links(html_content, url)
